@@ -37,6 +37,14 @@ public class GenerateVideoToolExecutor implements ToolExecutor {
      */
     private static final int MODEL_TYPE_VIDEO = 3;
 
+    /**
+     * 显式模型选择说明；画布专业节点仍以节点预算内的固定模型为准。
+     */
+    private static final String MODEL_ID_DESCRIPTION =
+            "本次使用的视频生成模型 ID；省略时使用默认视频模型。"
+                    + "需要首尾帧、参考图或多模态参考时，先用 get_generation_model_capabilities 选定模型再传入。"
+                    + "画布专业节点忽略此参数，只使用节点已确认的模型。";
+
 
     private final AiModelService aiModelService;
     private final VideoGenerationService videoGenerationService;
@@ -129,7 +137,10 @@ public class GenerateVideoToolExecutor implements ToolExecutor {
                                 .set("description", "随机种子，仅支持种子的模型可设"))
                         .set("cameraFixed", JSONUtil.createObj()
                                 .set("type", "boolean")
-                                .set("description", "是否固定镜头（不做运动），默认 false")))
+                                .set("description", "是否固定镜头（不做运动），默认 false"))
+                        .set("modelId", JSONUtil.createObj()
+                                .set("type", "integer")
+                                .set("description", MODEL_ID_DESCRIPTION)))
                 .toString();
     }
 
@@ -174,7 +185,7 @@ public class GenerateVideoToolExecutor implements ToolExecutor {
             String generateMode = StrUtil.isNotBlank(firstFrameImageUrl) ? "image2video" : "text2video";
 
             AiModel model = canvasModels.scoped(context) ? canvasModels.require(context,
-                    GenerationKind.VIDEO) : resolvePreferredModel();
+                    GenerationKind.VIDEO) : resolveModel(params.getLong("modelId"));
             var config = generationModelCapabilityService.getMergedModelConfig(model);
             // 旧模型保留原工具默认值；新契约由统一校验应用模型默认值。
             if (!config.containsKey("videoRules")) {
@@ -235,6 +246,21 @@ public class GenerateVideoToolExecutor implements ToolExecutor {
             log.error("[generate_video] 生成视频失败", e);
             return errorResult("生成失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 显式指定模型优先，否则回落到默认视频模型。
+     */
+    private AiModel resolveModel(Long modelId) {
+        if (modelId == null) {
+            return resolvePreferredModel();
+        }
+        AiModel model = aiModelService.getById(modelId);
+        if (model == null || !Integer.valueOf(1).equals(model.getStatus())
+                || !Integer.valueOf(MODEL_TYPE_VIDEO).equals(model.getModelType())) {
+            throw new IllegalArgumentException("指定的视频生成模型不存在、已停用或类型不匹配: " + modelId);
+        }
+        return model;
     }
 
     /**

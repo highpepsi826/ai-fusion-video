@@ -39,6 +39,14 @@ public class GenerateImageToolExecutor implements ToolExecutor {
      */
     private static final int MODEL_TYPE_IMAGE = 2;
 
+    /**
+     * 显式模型选择说明；画布专业节点仍以节点预算内的固定模型为准。
+     */
+    private static final String MODEL_ID_DESCRIPTION =
+            "本次使用的图片生成模型 ID；省略时使用默认图片模型。"
+                    + "需要参考图或首尾帧时，先用 get_generation_model_capabilities 选定模型再传入。"
+                    + "画布专业节点忽略此参数，只使用节点已确认的模型。";
+
 
     private final AiModelService aiModelService;
     private final ImageGenerationService imageGenerationService;
@@ -73,6 +81,8 @@ public class GenerateImageToolExecutor implements ToolExecutor {
                 - 提示词要详细具体，包含画面的主体、风格、视角等信息
                 - 可以使用中文提示词，系统会自动处理
                 - 如果你打算传 imageUrls，或不确定当前默认模型是否支持参考图，请先调用 get_generation_model_capabilities
+                - 传 imageUrls 前必须确认模型支持参考图及张数上限；可用 get_generation_model_capabilities 查询候选模型，再用 modelId 指定本次使用的模型
+                - 文生图与图生图使用不同模型时，按本次任务显式传 modelId；省略则使用默认图片模型
                 - media:// 托管素材与系统画风图地址由后端读取并转换，不能仅凭地址形式判断图片不可用
                 - 同一资产图片执行任务重试必须保留首次 imageUrls 的全部地址及顺序；审核拒绝、余额不足、网络错误都不授权移除参考图
                 - 分镜首尾帧执行器必须提供 storyboardItemId、frameType、expectedVersion、expectedSceneAssetVersion。
@@ -116,7 +126,10 @@ public class GenerateImageToolExecutor implements ToolExecutor {
                         .set("imageUrls", JSONUtil.createObj()
                                 .set("type", "array")
                                 .set("items", JSONUtil.createObj().set("type", "string"))
-                                .set("description", imageUrlDescription)))
+                                .set("description", imageUrlDescription))
+                        .set("modelId", JSONUtil.createObj()
+                                .set("type", "integer")
+                                .set("description", MODEL_ID_DESCRIPTION)))
                 .set("required", JSONUtil.parseArray("[\"prompt\"]"))
                 .toString();
     }
@@ -181,7 +194,7 @@ public class GenerateImageToolExecutor implements ToolExecutor {
             }
 
             AiModel model = canvasModels.scoped(context) ? canvasModels.require(context,
-                    GenerationKind.IMAGE) : resolvePreferredModel();
+                    GenerationKind.IMAGE) : resolveModel(params.getLong("modelId"));
 
             // 构建生图任务
             ImageTask task = ImageTask.builder()
@@ -223,6 +236,21 @@ public class GenerateImageToolExecutor implements ToolExecutor {
             log.error("[generate_image] 生成图片失败", e);
             return errorResult("生成失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 显式指定模型优先，否则回落到默认图片模型。
+     */
+    private AiModel resolveModel(Long modelId) {
+        if (modelId == null) {
+            return resolvePreferredModel();
+        }
+        AiModel model = aiModelService.getById(modelId);
+        if (model == null || !Integer.valueOf(1).equals(model.getStatus())
+                || !Integer.valueOf(MODEL_TYPE_IMAGE).equals(model.getModelType())) {
+            throw new IllegalArgumentException("指定的图片生成模型不存在、已停用或类型不匹配: " + modelId);
+        }
+        return model;
     }
 
     /**

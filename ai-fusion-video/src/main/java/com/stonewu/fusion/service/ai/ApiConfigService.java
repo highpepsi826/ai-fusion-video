@@ -132,6 +132,8 @@ public class ApiConfigService {
     @CacheEvict(value = "episodeBgmConfig", allEntries = true)
     @Transactional
     public void deleteApiConfig(Long id) {
+        // 先连带删除下属模型：失去 API 配置的模型无法在设置页管理，却仍会出现在助手的模型列表里。
+        aiModelMapper.softDeleteByApiConfigId(id);
         apiConfigMapper.deleteById(id);
         evictModelCaches();
     }

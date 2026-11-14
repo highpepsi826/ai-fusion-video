@@ -180,13 +180,20 @@ public class AiModelService {
     }
 
     public List<AiModel> getEnabledList() {
-        return aiModelMapper.selectList(new LambdaQueryWrapper<AiModel>().eq(AiModel::getStatus, 1));
+        return aiModelMapper.selectList(new LambdaQueryWrapper<AiModel>().eq(AiModel::getStatus, 1)
+                .orderByAsc(AiModel::getSort)
+                .orderByAsc(AiModel::getId));
     }
 
+    /**
+     * 列表顺序与 getDefaultByType 一致，避免助手下拉的默认项与实际调用模型不同。
+     */
     public List<AiModel> getListByType(Integer modelType) {
         return aiModelMapper.selectList(new LambdaQueryWrapper<AiModel>()
                 .eq(AiModel::getStatus, 1)
-                .eq(AiModel::getModelType, modelType));
+                .eq(AiModel::getModelType, modelType)
+                .orderByAsc(AiModel::getSort)
+                .orderByAsc(AiModel::getId));
     }
 
     public AiModel getDefaultByType(Integer modelType) {

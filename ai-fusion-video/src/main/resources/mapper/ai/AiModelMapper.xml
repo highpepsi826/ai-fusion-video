@@ -9,4 +9,13 @@
         WHERE id = #{id}
           AND deleted = 0
     </update>
+    <update id="softDeleteByApiConfigId">
+        UPDATE afv_ai_model
+        SET deleted = 1,
+            deleted_id = id,
+            default_model = FALSE,
+            update_time = NOW()
+        WHERE api_config_id = #{apiConfigId}
+          AND deleted = 0
+    </update>
 </mapper>
