@@ -113,6 +113,23 @@ class AgentRunQueryServiceTests {
     }
 
     @Test
+    void projectsToolCallWithoutArgumentsAsEmptyText() {
+        AgentRun run = run();
+        when(eventMapper.selectToolDeltas("run-1", "tool-1", 6))
+                .thenReturn(List.of());
+        ObjectNode payload = JsonNodeFactory.instance.objectNode()
+                .put("toolCallName", "list_project_assets");
+        CommittedAgentEvent event = committed(
+                6, "TOOL_CALL", "TOOL_CALL_END", "tool-1", payload);
+
+        StepVerifier.create(service.project(run, event))
+                .assertNext(projected -> assertThat(projected.getToolCalls())
+                        .singleElement()
+                        .satisfies(tool -> assertThat(tool.getArguments()).isEmpty()))
+                .verifyComplete();
+    }
+
+    @Test
     void projectsToolCallStartWithoutReadingIncompleteArguments() {
         AgentRun run = run();
         ObjectNode payload = JsonNodeFactory.instance.objectNode()

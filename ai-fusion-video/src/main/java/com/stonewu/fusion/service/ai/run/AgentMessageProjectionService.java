@@ -350,6 +350,9 @@ public class AgentMessageProjectionService {
         if (arguments == null) {
             arguments = firstText(payload, "arguments", "input", "delta");
         }
+        if (arguments == null) {
+            arguments = "";
+        }
         return AgentMessage.builder()
                 .conversationId(run.getConversationId())
                 .runId(run.getRunId())

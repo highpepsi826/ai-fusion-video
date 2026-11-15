@@ -221,7 +221,10 @@ export default function DashboardLayout({
             </OverlayScrollArea>
           </main>
           {ready && (
-            <ClientErrorBoundary context="融光助手运行异常">
+            <ClientErrorBoundary
+              context="融光助手运行异常"
+              resetKey={pathname}
+            >
               <AssistantDockSlot projectId={currentProjectId} />
             </ClientErrorBoundary>
           )}

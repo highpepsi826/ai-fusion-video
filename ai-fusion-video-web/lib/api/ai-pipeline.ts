@@ -169,6 +169,24 @@ function parsePipelineEvent(jsonText: string): AiChatStreamEvent {
   if (typeof value.outputType !== "string" || !OUTPUT_TYPES.has(value.outputType)) {
     throw new Error("Pipeline SSE outputType is invalid");
   }
+  // Tool arguments travel as an optional field: a tool call without arguments
+  // is delivered as null, while the timeline contract requires a string.
+  const toolCalls = value.toolCalls;
+  if (Array.isArray(toolCalls)) {
+    for (const toolCall of toolCalls) {
+      if (!isRecord(toolCall) || toolCall.arguments == null) {
+        continue;
+      }
+      if (typeof toolCall.arguments !== "string") {
+        throw new Error("Pipeline SSE tool call arguments must be text");
+      }
+    }
+    value.toolCalls = toolCalls.map((toolCall) => (
+      isRecord(toolCall) && toolCall.arguments == null
+        ? { ...toolCall, arguments: "" }
+        : toolCall
+    ));
+  }
   return value as unknown as AiChatStreamEvent;
 }
 

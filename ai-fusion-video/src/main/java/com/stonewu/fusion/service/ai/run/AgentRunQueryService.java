@@ -321,6 +321,9 @@ public final class AgentRunQueryService {
         if (arguments == null) {
             arguments = firstValue(payload, "arguments", "input", "delta");
         }
+        if (arguments == null) {
+            arguments = "";
+        }
         response.setToolCallId(toolCallId)
                 .setToolName(toolName)
                 .setToolCalls(List.of(new AiChatStreamRespVO.ToolCallVO()
