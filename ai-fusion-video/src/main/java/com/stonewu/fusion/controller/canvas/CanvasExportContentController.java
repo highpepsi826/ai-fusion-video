@@ -52,7 +52,8 @@ public class CanvasExportContentController {
             response.setContentLengthLong(range.length());
             response.setHeader(HttpHeaders.ACCEPT_RANGES, "bytes");
             response.setHeader(HttpHeaders.ETAG, etag);
-            response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
+            // 私有快取 240 秒：短於 access ticket 的 5 分鐘生命期。
+            response.setHeader(HttpHeaders.CACHE_CONTROL, "private, max-age=240");
             response.setHeader("X-Content-Type-Options", "nosniff");
             response.setHeader("Referrer-Policy", "no-referrer");
             response.setHeader("Content-Security-Policy", "sandbox");
