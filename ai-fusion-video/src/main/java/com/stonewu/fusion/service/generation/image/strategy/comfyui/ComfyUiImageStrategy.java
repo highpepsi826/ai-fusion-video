@@ -106,9 +106,9 @@ public class ComfyUiImageStrategy implements ImageGenerationStrategy {
         values.put("height", height);
         values.put("count", Math.max(1, count));
         values.put("seed", seed);
-        if (references != null && !references.isEmpty()) {
-            values.put("referenceImages", new ArrayList<>(references));
-        }
+        // 始终写入 referenceImages：空列表交给渲染器判定为「全部可选槽位未使用」，
+        // 逐一断开 LoadImage 后自然走文生图路线；缺省该字段会让占位图残留成参考图。
+        values.put("referenceImages", references == null ? new ArrayList<>() : new ArrayList<>(references));
         return values;
     }
 
